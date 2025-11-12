@@ -34,7 +34,7 @@ const StudentAuth = () => {
         .from("students")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (student) {
         navigate("/student-dashboard");
@@ -58,7 +58,7 @@ const StudentAuth = () => {
         .from("students")
         .select("*")
         .eq("id", data.user.id)
-        .single();
+        .maybeSingle();
 
       if (!student) {
         await supabase.auth.signOut();
@@ -80,32 +80,23 @@ const StudentAuth = () => {
     setIsLoading(true);
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: signupForm.email,
         password: signupForm.password,
         options: {
           data: {
             user_type: "student",
+            name: signupForm.name,
+            reg_no: signupForm.regNo,
+            department: signupForm.department,
+            semester: signupForm.semester,
           },
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Failed to create account");
+      if (error) throw error;
 
-      const { error: insertError } = await supabase.from("students").insert({
-        id: authData.user.id,
-        name: signupForm.name,
-        reg_no: signupForm.regNo,
-        department: signupForm.department,
-        semester: signupForm.semester,
-        email: signupForm.email,
-      });
-
-      if (insertError) throw insertError;
-
-      toast.success("Account created successfully!");
-      navigate("/student-dashboard");
+      toast.success("Account created successfully! Logging you in...");
     } catch (error: any) {
       toast.error(error.message || "Signup failed");
     } finally {

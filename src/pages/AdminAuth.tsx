@@ -10,7 +10,13 @@ import { supabase } from "@/integrations/supabase/client";
 const AdminAuth = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [isLogin, setIsLogin] = useState(true);
+  const [form, setForm] = useState({ 
+    email: "", 
+    password: "",
+    name: "",
+    role: "Department Admin" as "Super Admin" | "Department Admin"
+  });
 
   useEffect(() => {
     checkAuth();
@@ -47,7 +53,7 @@ const AdminAuth = () => {
         .from("admins")
         .select("*")
         .eq("id", data.user.id)
-        .single();
+        .maybeSingle();
 
       if (!admin) {
         await supabase.auth.signOut();
@@ -64,17 +70,71 @@ const AdminAuth = () => {
     }
   };
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: {
+            user_type: 'admin',
+            name: form.name,
+            role: form.role,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success("Admin registration successful! Logging you in...");
+    } catch (error: any) {
+      toast.error(error.message || "Registration failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Admin Portal</CardTitle>
           <CardDescription className="text-center">
-            Login to manage student complaints
+            {isLogin ? "Login to manage student complaints" : "Register as an admin"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={isLogin ? handleLogin : handleSignup} className="space-y-4">
+            {!isLogin && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="John Doe"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <select
+                    id="role"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={form.role}
+                    onChange={(e) => setForm({ ...form, role: e.target.value as "Super Admin" | "Department Admin" })}
+                  >
+                    <option value="Department Admin">Department Admin</option>
+                    <option value="Super Admin">Super Admin</option>
+                  </select>
+                </div>
+              </>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -97,7 +157,15 @@ const AdminAuth = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging in..." : "Login"}
+              {isLoading ? (isLogin ? "Logging in..." : "Registering...") : (isLogin ? "Login" : "Register")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setIsLogin(!isLogin)}
+            >
+              {isLogin ? "Need to register? Sign up" : "Already have an account? Login"}
             </Button>
           </form>
         </CardContent>
